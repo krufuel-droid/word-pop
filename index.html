@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Word Pop — Find the Word!</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height:100%; }
+  body {
+    font-family: "Comic Sans MS", "Chalkboard SE", "Segoe UI Rounded", system-ui, sans-serif;
+    background: linear-gradient(160deg, #aee9ff 0%, #d8f7e8 55%, #fff3c4 100%);
+    display:flex; flex-direction:column; align-items:center;
+    min-height:100dvh; padding:16px 12px 28px; overflow-x:hidden;
+    user-select:none;
+  }
+  h1 {
+    font-size: clamp(26px, 6vw, 40px); color:#0d6e6e; letter-spacing:.5px;
+    text-shadow: 0 2px 0 #ffffffaa; margin:6px 0 4px;
+  }
+  .buddy-row { display:flex; align-items:center; gap:12px; margin:10px 0 18px; max-width:560px; width:100%; }
+  .buddy { font-size: clamp(56px, 14vw, 84px); line-height:1; animation: bob 2.4s ease-in-out infinite; }
+  @keyframes bob { 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-7px);} }
+  .bubble {
+    position:relative; background:#fff; border-radius:22px; padding:16px 18px;
+    font-size: clamp(20px, 5.2vw, 28px); color:#173f4d; font-weight:700; flex:1;
+    box-shadow: 0 4px 14px #0002; cursor:pointer; border:3px solid #ffd34d;
+    text-align:left; font-family:inherit;
+  }
+  .bubble::before {
+    content:""; position:absolute; left:-14px; top:50%; transform:translateY(-50%);
+    border:8px solid transparent; border-right:14px solid #ffd34d;
+  }
+  .bubble .hint { display:block; font-size:13px; font-weight:400; color:#7a8b91; margin-top:4px; }
+  .cards {
+    display:grid; grid-template-columns: repeat(3, 1fr); gap:14px;
+    width:100%; max-width:560px;
+  }
+  @media (max-width:430px){ .cards{ gap:10px; } }
+  .card {
+    background:#fff; border:4px solid #bfe3ea; border-radius:26px;
+    aspect-ratio: 1/1.08; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:4px; cursor:pointer; box-shadow: 0 5px 0 #9fd3de, 0 8px 16px #0001;
+    transition: transform .12s ease, border-color .12s ease;
+    font-family:inherit; padding:6px;
+  }
+  .card:active { transform: scale(.95); }
+  .card .pic { font-size: clamp(48px, 15vw, 76px); line-height:1.1; }
+  .card .dot {
+    width: clamp(52px, 16vw, 82px); height: clamp(52px, 16vw, 82px);
+    border-radius:50%; border:3px solid rgba(0,0,0,.25);
+  }
+  .card .num { font-size: clamp(52px, 16vw, 84px); font-weight:800; color:#0d6e6e; line-height:1; }
+  .card .dots { font-size: clamp(13px, 3.6vw, 18px); color:#ff7bac; letter-spacing:2px; line-height:1; min-height:1em; }
+  .card .word { font-size: clamp(15px, 4vw, 20px); font-weight:700; color:#345; }
+  .card.right { border-color:#57c84d; background:#eaffea; animation: pop .45s ease; }
+  .card.wrong { border-color:#ffb3ab; animation: wiggle .4s ease; }
+  @keyframes pop { 0%{transform:scale(1);} 40%{transform:scale(1.13) rotate(-2deg);} 100%{transform:scale(1);} }
+  @keyframes wiggle { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-7px);} 75%{transform:translateX(7px);} }
+  .confetti { position:fixed; top:-40px; font-size:30px; pointer-events:none; z-index:50;
+    animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(110vh) rotate(340deg); } }
+  #startOverlay {
+    position:fixed; inset:0; background:linear-gradient(160deg,#aee9ff,#fff3c4);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; z-index:100;
+    text-align:center; padding:24px;
+  }
+  #startOverlay .big { font-size:92px; animation: bob 2.4s ease-in-out infinite; }
+  #startOverlay p { font-size: clamp(20px,5vw,26px); color:#0d6e6e; font-weight:700; max-width:420px; }
+  #playBtn {
+    font-family:inherit; font-size:30px; font-weight:800; color:#fff; background:#ff7bac;
+    border:none; border-radius:999px; padding:18px 52px; cursor:pointer;
+    box-shadow: 0 6px 0 #d14e80, 0 10px 22px #0003;
+  }
+  #playBtn:active { transform: translateY(4px); box-shadow: 0 2px 0 #d14e80; }
+  .modebar { display:flex; gap:10px; margin:8px 0 4px; flex-wrap:wrap; justify-content:center; max-width:560px; }
+  .modebtn {
+    font-family:inherit; font-size:clamp(19px,5vw,24px); font-weight:800; color:#0d6e6e;
+    background:#ffffffb8; border:3px solid #bfe3ea; border-radius:999px; padding:10px 26px;
+    cursor:pointer; box-shadow:0 3px 0 #9fd3de;
+  }
+  .modebtn.on { background:#ffd34d; border-color:#f0b429; color:#5b4300; box-shadow:0 3px 0 #d19a12; }
+  .track { width:100%; max-width:560px; background:#ffffffa8; border:3px solid #bfe3ea;
+    border-radius:22px; padding:12px 14px 8px; margin:8px 0 14px; box-shadow:0 4px 12px #0001; }
+  .lane { position:relative; height:58px; border-bottom:3px dashed #9fd3de; margin-bottom:6px; }
+  .lane:last-child { border-bottom:none; }
+  .lane .who { position:absolute; left:0; top:-2px; font-size:13px; font-weight:700; color:#678; }
+  .racer { position:absolute; bottom:2px; font-size:42px; line-height:1; transition:left .7s ease; transform:translateX(-50%); }
+  .finish { position:absolute; right:0; bottom:2px; font-size:34px; }
+  .prob-dots { text-align:center; font-size:clamp(17px,4.6vw,22px); letter-spacing:3px; margin:2px 0 12px; min-height:1.2em; }
+  .prob-dots .g1 { color:#ec407a; } .prob-dots .g2 { color:#1e88e5; }
+  .prob-dots .gone { color:#bbb; }
+  .prob-dots .op { color:#345; font-weight:800; letter-spacing:0; }
+  #raceMsg { font-size:clamp(20px,5.4vw,27px); font-weight:800; color:#0d6e6e; text-align:center; min-height:1.3em; margin:10px 0 4px; }
+  #raceAgain {
+    font-family:inherit; font-size:24px; font-weight:800; color:#fff; background:#57c84d;
+    border:none; border-radius:999px; padding:14px 42px; cursor:pointer; margin-top:8px;
+    box-shadow:0 5px 0 #3a9c33, 0 8px 18px #0003;
+  }
+  #raceAgain:active { transform:translateY(3px); box-shadow:0 2px 0 #3a9c33; }
+  .match-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; width:100%; max-width:560px; }
+  .mcard {
+    aspect-ratio:1/1.1; border-radius:18px; border:4px solid #bfe3ea; background:#fff;
+    font-size:clamp(30px,9vw,46px); display:flex; align-items:center; justify-content:center;
+    cursor:pointer; box-shadow:0 4px 0 #9fd3de; font-family:inherit; transition:transform .15s ease;
+  }
+  .mcard.down { background:linear-gradient(150deg,#7ed0e8,#ffd34d); color:#fff; font-size:clamp(24px,7vw,36px); }
+  .mcard.matched { border-color:#57c84d; background:#eaffea; animation: pop .45s ease; }
+  .mode-msg { font-size:clamp(20px,5.4vw,27px); font-weight:800; color:#0d6e6e; text-align:center; min-height:1.3em; margin:12px 0 4px; }
+  .bigbtn {
+    font-family:inherit; font-size:22px; font-weight:800; color:#fff; background:#57c84d;
+    border:none; border-radius:999px; padding:12px 34px; cursor:pointer; margin-top:8px;
+    box-shadow:0 5px 0 #3a9c33, 0 8px 18px #0003;
+  }
+  .bigbtn.alt { background:#ff7bac; box-shadow:0 5px 0 #d14e80, 0 8px 18px #0003; }
+  .bigbtn:active { transform:translateY(3px); }
+  .trace-wrap { width:100%; max-width:460px; text-align:center; }
+  #traceCanvas {
+    width:100%; aspect-ratio:1/1; background:#fff; border:4px solid #bfe3ea; border-radius:26px;
+    box-shadow:0 5px 0 #9fd3de, 0 8px 16px #0001; touch-action:none;
+  }
+  .trace-head { font-size:clamp(22px,6vw,30px); font-weight:800; color:#0d6e6e; margin:6px 0 10px; }
+  .trace-btns { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  .palette { display:flex; gap:9px; flex-wrap:wrap; justify-content:center; max-width:560px; margin:4px 0 14px; }
+  .swatch {
+    width:clamp(40px,11vw,52px); height:clamp(40px,11vw,52px); border-radius:50%;
+    border:4px solid #fff; box-shadow:0 2px 6px #0003; cursor:pointer; padding:0;
+  }
+  .swatch.on { border-color:#345; transform:scale(1.12); }
+  #colorSvg { width:100%; max-width:440px; background:#fff; border:4px solid #bfe3ea; border-radius:26px; box-shadow:0 5px 0 #9fd3de; }
+  #colorSvg .region { cursor:pointer; stroke:#5b6b73; stroke-width:3; }
+</style>
+</head>
+<body>
+
+<div id="startOverlay">
+  <div class="big">🦉</div>
+  <p>Hi! I'm Poppy. I'll say a word, a color, or a number — you tap the picture!</p>
+  <button id="playBtn">▶ Play</button>
+</div>
+
+<h1>🌈 Word Pop 🌈</h1>
+
+<div class="modebar">
+  <button class="modebtn on" id="modeFindBtn">🔍 Find it!</button>
+  <button class="modebtn" id="modeRaceBtn">🏁 Race!</button>
+  <button class="modebtn" id="modeMatchBtn">🧠 Match!</button>
+  <button class="modebtn" id="modeTraceBtn">✏️ Trace!</button>
+  <button class="modebtn" id="modeColorBtn">🎨 Color!</button>
+</div>
+
+<div id="findMode">
+  <div class="buddy-row">
+    <div class="buddy" aria-hidden="true">🦉</div>
+    <button class="bubble" id="bubble" aria-label="Hear it again">
+      <span id="bubbleText">Can you find the …?</span>
+      <span class="hint">🔊 tap to hear it again</span>
+    </button>
+  </div>
+  <div class="cards" id="cards"></div>
+</div>
+
+<div id="raceMode" hidden>
+  <div class="track">
+    <div class="lane">
+      <span class="who">Poppy</span>
+      <span class="racer" id="poppyRacer">🦉</span>
+      <span class="finish">🏁</span>
+    </div>
+    <div class="lane">
+      <span class="who">Your frog</span>
+      <span class="racer" id="frogRacer">🐸</span>
+      <span class="finish">🏆</span>
+    </div>
+  </div>
+  <div class="buddy-row">
+    <div class="buddy" aria-hidden="true">🦉</div>
+    <button class="bubble" id="raceBubble" aria-label="Hear the question again">
+      <span id="raceText">Ready to race?</span>
+      <span class="hint">🔊 tap to hear it again</span>
+    </button>
+  </div>
+  <div class="prob-dots" id="raceDots"></div>
+  <div class="cards" id="raceCards"></div>
+  <div id="raceMsg"></div>
+  <button id="raceAgain" hidden>🏁 Race again!</button>
+</div>
+
+<div id="matchMode" hidden>
+  <div class="buddy-row">
+    <div class="buddy" aria-hidden="true">🦉</div>
+    <button class="bubble" id="matchBubble" aria-label="Hear the instructions again">
+      <span>Find the matching pairs!</span>
+      <span class="hint">🔊 tap to hear it again</span>
+    </button>
+  </div>
+  <div class="match-grid" id="matchGrid"></div>
+  <div class="mode-msg" id="matchMsg"></div>
+  <button class="bigbtn" id="matchAgain" hidden>🔀 New game</button>
+</div>
+
+<div id="traceMode" hidden>
+  <div class="trace-wrap">
+    <div class="trace-head" id="traceHead">Trace the letter!</div>
+    <canvas id="traceCanvas" width="600" height="600"></canvas>
+    <div class="mode-msg" id="traceMsg"></div>
+    <div class="trace-btns">
+      <button class="bigbtn alt" id="traceClear">↺ Start over</button>
+      <button class="bigbtn" id="traceNext">Next letter ➜</button>
+    </div>
+  </div>
+</div>
+
+<div id="colorMode" hidden>
+  <div class="buddy-row">
+    <div class="buddy" aria-hidden="true">🦉</div>
+    <button class="bubble" id="colorBubble" aria-label="Hear the instructions again">
+      <span>Tap a color, then tap part of Poppy!</span>
+      <span class="hint">🔊 tap to hear it again</span>
+    </button>
+  </div>
+  <div class="palette" id="palette"></div>
+  <svg id="colorSvg" viewBox="0 0 400 400" role="img" aria-label="Poppy the owl coloring page">
+    <rect class="region" data-name="sky" x="0" y="0" width="400" height="400" fill="#ffffff"/>
+    <circle class="region" data-name="sun" cx="338" cy="58" r="34" fill="#ffffff"/>
+    <ellipse class="region" data-name="grass" cx="200" cy="392" rx="210" ry="34" fill="#ffffff"/>
+    <rect class="region" data-name="branch" x="52" y="292" width="296" height="20" rx="10" fill="#ffffff"/>
+    <ellipse class="region" data-name="body" cx="200" cy="215" rx="88" ry="100" fill="#ffffff"/>
+    <ellipse class="region" data-name="belly" cx="200" cy="248" rx="52" ry="58" fill="#ffffff"/>
+    <path class="region" data-name="wing left" d="M118 190 Q70 230 112 292 Q138 252 130 205 Z" fill="#ffffff"/>
+    <path class="region" data-name="wing right" d="M282 190 Q330 230 288 292 Q262 252 270 205 Z" fill="#ffffff"/>
+    <path class="region" data-name="ear left" d="M132 128 L118 78 L168 104 Z" fill="#ffffff"/>
+    <path class="region" data-name="ear right" d="M268 128 L282 78 L232 104 Z" fill="#ffffff"/>
+    <circle class="region" data-name="face" cx="200" cy="140" r="62" fill="#ffffff"/>
+    <circle cx="176" cy="134" r="11" fill="#345"/>
+    <circle cx="224" cy="134" r="11" fill="#345"/>
+    <path d="M188 152 L212 152 L200 168 Z" fill="#f0a13c" stroke="#5b6b73" stroke-width="3"/>
+    <path d="M168 318 l-8 16 M184 320 l-2 16 M216 320 l2 16 M232 318 l8 16" stroke="#5b6b73" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <path class="region" data-name="flower" d="M52 348 m-14 0 a14 14 0 1 0 28 0 a14 14 0 1 0 -28 0 M52 362 L52 384" fill="#ffffff"/>
+    <path class="region" data-name="flower two" d="M348 348 m-14 0 a14 14 0 1 0 28 0 a14 14 0 1 0 -28 0 M348 362 L348 384" fill="#ffffff"/>
+  </svg>
+  <div class="trace-btns">
+    <button class="bigbtn alt" id="colorReset">↺ Start over</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var WORDS = [
+    { word:"dog", pic:"🐶" }, { word:"cat", pic:"🐱" }, { word:"frog", pic:"🐸" },
+    { word:"duck", pic:"🦆" }, { word:"fish", pic:"🐟" }, { word:"bird", pic:"🐦" },
+    { word:"cow", pic:"🐮" }, { word:"pig", pic:"🐷" }, { word:"apple", pic:"🍎" },
+    { word:"banana", pic:"🍌" }, { word:"grapes", pic:"🍇" }, { word:"flower", pic:"🌸" },
+    { word:"sun", pic:"☀️" }, { word:"moon", pic:"🌙" }, { word:"star", pic:"⭐" },
+    { word:"ball", pic:"⚽" }, { word:"car", pic:"🚗" }, { word:"bus", pic:"🚌" },
+    { word:"book", pic:"📖" }, { word:"tree", pic:"🌳" }
+  ];
+
+  var COLORS = [
+    { word:"red", hex:"#e53935" }, { word:"orange", hex:"#fb8c00" },
+    { word:"yellow", hex:"#fdd835" }, { word:"green", hex:"#43a047" },
+    { word:"blue", hex:"#1e88e5" }, { word:"purple", hex:"#8e24aa" },
+    { word:"pink", hex:"#ec407a" }, { word:"brown", hex:"#6d4c41" },
+    { word:"black", hex:"#212121" }, { word:"white", hex:"#fafafa" }
+  ];
+
+  var NUMBERS = [
+    { word:"one", num:1 }, { word:"two", num:2 }, { word:"three", num:3 },
+    { word:"four", num:4 }, { word:"five", num:5 }, { word:"six", num:6 },
+    { word:"seven", num:7 }, { word:"eight", num:8 }, { word:"nine", num:9 },
+    { word:"ten", num:10 }
+  ];
+
+  var SHAPES = [
+    { word:"circle", pic:"⭕" }, { word:"square", pic:"🟦" },
+    { word:"triangle", pic:"🔺" }, { word:"diamond", pic:"🔶" },
+    { word:"heart", pic:"❤️" }
+  ];
+
+  var PRAISE = ["Yes! %w%!", "You found the %w%!", "Great job! %w%!", "Hooray! %w%!", "That's the %w%!"];
+  var target = null, targetType = "word", lock = false, lastKey = "";
+  var currentMode = "find";
+
+  var cardsEl = document.getElementById("cards");
+  var bubbleText = document.getElementById("bubbleText");
+  var bubble = document.getElementById("bubble");
+
+  /* Voice: pre-recorded Aria clips first (Rose's app voice), phone speech as fallback. */
+  var AUDIO_DIR = "word-pop-audio/";
+  var player = new Audio();
+  var playToken = 0;
+
+  function speakFallback(text){
+    try {
+      var u = new SpeechSynthesisUtterance(text);
+      u.rate = 0.92; u.pitch = 1.15; u.lang = "en-US";
+      var voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+      for (var i=0;i<voices.length;i++){
+        if (voices[i].lang && voices[i].lang.indexOf("en") === 0) { u.voice = voices[i]; break; }
+      }
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
+    } catch(e){ /* speech is a bonus; the game still works silently */ }
+  }
+
+  function slugFor(item, type){
+    if (type === "number") return "number-" + item.word;
+    return item.word;
+  }
+  function clipPath(kind, item, type){
+    return AUDIO_DIR + kind + "-" + slugFor(item, type) + ".mp3";
+  }
+
+  function stopAudio(){
+    playToken++;
+    try { player.pause(); player.currentTime = 0; } catch(e){}
+    if ("speechSynthesis" in window) { try { speechSynthesis.cancel(); } catch(e){} }
+  }
+
+  function playClips(paths, fallbackText){
+    stopAudio();
+    var token = playToken;
+    var i = 0;
+    function fail(){
+      if (token === playToken && fallbackText) speakFallback(fallbackText);
+    }
+    function next(){
+      if (token !== playToken) return;
+      if (i >= paths.length) return;
+      var path = paths[i++];
+      var base = path.substring(path.lastIndexOf("/") + 1);
+      /* Embedded clips (single-file build) win; loose files are the fallback. */
+      player.src = (window.WP_AUDIO && window.WP_AUDIO[base]) ? window.WP_AUDIO[base] : path;
+      player.onerror = fail;
+      player.onended = next;
+      var p = player.play();
+      if (p && p.catch) p.catch(fail);
+    }
+    next();
+  }
+
+  function shuffle(a){
+    for (var i=a.length-1;i>0;i--){
+      var j = Math.floor(Math.random()*(i+1));
+      var t=a[i]; a[i]=a[j]; a[j]=t;
+    }
+    return a;
+  }
+
+  function label(item, type){
+    if (type === "number") return "number " + item.word;
+    return item.word;
+  }
+  function askText(){
+    return "Can you find the " + label(target, targetType) + "?";
+  }
+  function nameText(item, type){
+    return "the " + label(item, type);
+  }
+
+  function ask(){
+    bubbleText.textContent = askText();
+    if (currentMode === "find") playClips([clipPath("ask", target, targetType)], askText());
+  }
+
+  function confetti(){
+    var bits = ["🎉","⭐","🌈","💖","✨","🎈"];
+    for (var i=0;i<16;i++){
+      var s = document.createElement("span");
+      s.className = "confetti";
+      s.textContent = bits[Math.floor(Math.random()*bits.length)];
+      s.style.left = (Math.random()*96) + "vw";
+      s.style.animationDuration = (1.1 + Math.random()*0.9) + "s";
+      s.style.fontSize = (22 + Math.random()*22) + "px";
+      document.body.appendChild(s);
+      (function(el){ setTimeout(function(){ el.remove(); }, 2300); })(s);
+    }
+  }
+
+  function pickType(){
+    var r = Math.random();
+    if (r < 0.4) return "word";
+    if (r < 0.6) return "color";
+    if (r < 0.8) return "number";
+    return "shape";
+  }
+
+  function poolFor(type){
+    if (type === "color") return COLORS;
+    if (type === "number") return NUMBERS;
+    if (type === "shape") return SHAPES;
+    return WORDS;
+  }
+
+  function cardFace(item, type){
+    if (type === "color"){
+      return '<span class="dot" style="background:' + item.hex + '"></span><span class="word">' + item.word + '</span>';
+    }
+    if (type === "number"){
+      var rows = [], row = "";
+      for (var i=0;i<item.num;i++){
+        row += "●";
+        if ((i+1) % 5 === 0 || i === item.num-1){ rows.push(row); row = ""; }
+      }
+      return '<span class="num">' + item.num + '</span><span class="dots">' + rows.join("<br>") + '</span><span class="word">' + item.word + '</span>';
+    }
+    return '<span class="pic">' + item.pic + '</span><span class="word">' + item.word + '</span>';
+  }
+
+  /* Shuffle-bag: every item in a pool comes up once before any repeats. */
+  var bags = { word: [], color: [], number: [], shape: [] };
+  function drawTarget(type, pool){
+    var bag = bags[type];
+    if (!bag.length){
+      bag = shuffle(pool.slice());
+      if (bag.length > 1 && type + ":" + bag[bag.length-1].word === lastKey){
+        var t = bag[bag.length-1]; bag[bag.length-1] = bag[0]; bag[0] = t;
+      }
+      bags[type] = bag;
+    }
+    return bags[type].pop();
+  }
+
+  function round(){
+    lock = false;
+    targetType = pickType();
+    var pool = poolFor(targetType);
+    target = drawTarget(targetType, pool);
+    lastKey = targetType + ":" + target.word;
+    var others = shuffle(pool.filter(function(w){ return w.word !== target.word; }).slice()).slice(0,2);
+    var trio = shuffle([target].concat(others));
+    cardsEl.innerHTML = "";
+    trio.forEach(function(item){
+      var b = document.createElement("button");
+      b.className = "card";
+      b.setAttribute("aria-label", item.word);
+      b.innerHTML = cardFace(item, targetType);
+      b.addEventListener("click", function(){ pick(item, b); });
+      cardsEl.appendChild(b);
+    });
+    ask();
+  }
+
+  function pick(item, btn){
+    if (lock) return;
+    if (item.word === target.word){
+      lock = true;
+      btn.classList.add("right");
+      var p = PRAISE[Math.floor(Math.random()*PRAISE.length)].replace("%w%", label(target, targetType));
+      bubbleText.textContent = p;
+      if (currentMode === "find") playClips([clipPath("praise", target, targetType)], p);
+      confetti();
+      setTimeout(round, 1900);
+    } else {
+      btn.classList.add("wrong");
+      if (currentMode === "find") playClips(
+        [clipPath("model", item, targetType), clipPath("ask", target, targetType)],
+        "That's " + nameText(item, targetType) + ". " + askText()
+      );
+      setTimeout(function(){ btn.classList.remove("wrong"); }, 450);
+    }
+  }
+
+  bubble.addEventListener("click", function(){ if (target && !lock) ask(); });
+
+  document.getElementById("playBtn").addEventListener("click", function(){
+    document.getElementById("startOverlay").style.display = "none";
+    playClips([AUDIO_DIR + "intro.mp3"], "Hi! I'm Poppy!");
+    setTimeout(round, 1500);
+  });
+
+  if ("speechSynthesis" in window) {
+    speechSynthesis.getVoices();
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+      speechSynthesis.onvoiceschanged = function(){ speechSynthesis.getVoices(); };
+    }
+  }
+
+  /* ---------------- Race mode: frog vs Poppy, math moves the frog ---------------- */
+  var STEPS = 8;
+  var race = { a:0, b:0, op:"plus", answer:0, frog:0, poppy:0, over:false, lock:false, started:false };
+  var poppyTimer = null;
+
+  var findModeEl = document.getElementById("findMode");
+  var raceModeEl = document.getElementById("raceMode");
+  var modeFindBtn = document.getElementById("modeFindBtn");
+  var modeRaceBtn = document.getElementById("modeRaceBtn");
+  var raceText = document.getElementById("raceText");
+  var raceDots = document.getElementById("raceDots");
+  var raceCardsEl = document.getElementById("raceCards");
+  var raceMsg = document.getElementById("raceMsg");
+  var raceAgainBtn = document.getElementById("raceAgain");
+  var frogRacer = document.getElementById("frogRacer");
+  var poppyRacer = document.getElementById("poppyRacer");
+
+  function mathClip(){
+    return AUDIO_DIR + "math-" + race.op + "-" + race.a + "-" + race.b + ".mp3";
+  }
+  function mathText(){
+    return "What is " + race.a + (race.op === "plus" ? " plus " : " minus ") + race.b + "?";
+  }
+  function equation(){
+    return race.a + (race.op === "plus" ? " + " : " − ") + race.b + " = ?";
+  }
+
+  function renderTrack(){
+    poppyRacer.style.left = (6 + (race.poppy / STEPS) * 84) + "%";
+    frogRacer.style.left = (6 + (race.frog / STEPS) * 84) + "%";
+  }
+
+  function renderDots(){
+    var html = "", i;
+    if (race.op === "plus"){
+      html += '<span class="g1">';
+      for (i=0;i<race.a;i++) html += "●";
+      html += '</span> <span class="op">+</span> <span class="g2">';
+      for (i=0;i<race.b;i++) html += "●";
+      html += "</span>";
+    } else {
+      html += '<span class="g1">';
+      for (i=0;i<race.a - race.b;i++) html += "●";
+      html += '</span><span class="gone">';
+      for (i=0;i<race.b;i++) html += "●";
+      html += "</span>";
+    }
+    raceDots.innerHTML = html;
+  }
+
+  function newProblem(){
+    if (currentMode !== "race" || race.over) return;
+    race.lock = false;
+    race.op = Math.random() < 0.5 ? "plus" : "minus";
+    if (race.op === "plus"){
+      race.a = Math.floor(Math.random()*10);            /* 0..9 */
+      race.b = Math.floor(Math.random()*(11 - race.a)); /* sum <= 10 */
+      if (race.a === 0 && race.b === 0) race.b = 1;
+      race.answer = race.a + race.b;
+    } else {
+      race.a = 1 + Math.floor(Math.random()*10);        /* 1..10 */
+      race.b = Math.floor(Math.random()*(race.a + 1));  /* answer >= 0 */
+      race.answer = race.a - race.b;
+    }
+    raceText.textContent = equation();
+    renderDots();
+    var opts = [race.answer];
+    while (opts.length < 3){
+      var d = race.answer + (Math.floor(Math.random()*5) - 2);
+      if (d >= 0 && d <= 10 && opts.indexOf(d) === -1) opts.push(d);
+    }
+    raceCardsEl.innerHTML = "";
+    shuffle(opts).forEach(function(n){
+      var item = { word:"zero", num:0 };
+      for (var k=0;k<NUMBERS.length;k++){ if (NUMBERS[k].num === n) item = NUMBERS[k]; }
+      var btn = document.createElement("button");
+      btn.className = "card";
+      btn.setAttribute("aria-label", item.word);
+      btn.innerHTML = cardFace(item, "number");
+      btn.addEventListener("click", function(){ racePick(n, btn); });
+      raceCardsEl.appendChild(btn);
+    });
+    playClips([mathClip()], mathText());
+  }
+
+  function endRace(won){
+    race.over = true;
+    if (poppyTimer) { clearInterval(poppyTimer); poppyTimer = null; }
+    if (won){
+      raceMsg.textContent = "🏆 You win!";
+      playClips([AUDIO_DIR + "race-win.mp3"], "You win! You are a math racing star!");
+      confetti();
+      setTimeout(confetti, 350);
+    } else {
+      raceMsg.textContent = "Poppy got there first!";
+      playClips([AUDIO_DIR + "race-lose.mp3"], "Poppy got there first this time. Let's race again!");
+    }
+    raceAgainBtn.hidden = false;
+  }
+
+  function racePick(n, btn){
+    if (race.lock || race.over || currentMode !== "race") return;
+    if (n === race.answer){
+      race.lock = true;
+      btn.classList.add("right");
+      race.frog++;
+      renderTrack();
+      if (race.frog >= STEPS){ endRace(true); return; }
+      var praiseClip = AUDIO_DIR + "race-praise-" + (1 + Math.floor(Math.random()*3)) + ".mp3";
+      playClips([praiseClip], "Great job!");
+      setTimeout(newProblem, 1500);
+    } else {
+      btn.classList.add("wrong");
+      playClips([AUDIO_DIR + "race-try.mp3"], "Good try! Count the dots and try again!");
+      setTimeout(function(){ btn.classList.remove("wrong"); }, 450);
+    }
+  }
+
+  function poppyStep(){
+    if (currentMode !== "race" || race.over) return;
+    if (Math.random() < 0.85){
+      race.poppy++;
+      renderTrack();
+      if (race.poppy >= STEPS) endRace(false);
+    }
+  }
+
+  function startRace(){
+    race.frog = 0; race.poppy = 0; race.over = false; race.lock = false; race.started = true;
+    raceMsg.textContent = "";
+    raceAgainBtn.hidden = true;
+    renderTrack();
+    if (poppyTimer) clearInterval(poppyTimer);
+    poppyTimer = setInterval(poppyStep, 6000);
+    playClips([AUDIO_DIR + "race-intro.mp3"], "Let's race! Answer the math questions to make your frog hop!");
+    setTimeout(newProblem, 2100);
+  }
+
+  var MODE_ELS = null; /* built in the modes block below */
+  function setMode(mode){
+    currentMode = mode;
+    stopAudio();
+    if (poppyTimer) { clearInterval(poppyTimer); poppyTimer = null; }
+    for (var key in MODE_ELS){
+      MODE_ELS[key].el.hidden = key !== mode;
+      MODE_ELS[key].btn.classList.toggle("on", key === mode);
+    }
+    if (mode === "find"){ if (target) ask(); }
+    else if (mode === "race"){ startRace(); }
+    else if (mode === "match"){ startMatch(); }
+    else if (mode === "trace"){ startTrace(); }
+    else if (mode === "color"){ startColor(); }
+  }
+  raceAgainBtn.addEventListener("click", function(){ if (currentMode === "race") startRace(); });
+  document.getElementById("raceBubble").addEventListener("click", function(){
+    if (currentMode === "race" && race.started && !race.over) playClips([mathClip()], mathText());
+  });
+
+  /* ---------------- Mode registry ---------------- */
+  MODE_ELS = {
+    find:  { el: findModeEl,  btn: modeFindBtn },
+    race:  { el: raceModeEl,  btn: modeRaceBtn },
+    match: { el: document.getElementById("matchMode"), btn: document.getElementById("modeMatchBtn") },
+    trace: { el: document.getElementById("traceMode"), btn: document.getElementById("modeTraceBtn") },
+    color: { el: document.getElementById("colorMode"), btn: document.getElementById("modeColorBtn") }
+  };
+  Object.keys(MODE_ELS).forEach(function(k){
+    MODE_ELS[k].btn.addEventListener("click", function(){ setMode(k); });
+  });
+
+  /* ---------------- Memory Match mode ---------------- */
+  var matchGrid = document.getElementById("matchGrid");
+  var matchMsg = document.getElementById("matchMsg");
+  var matchAgainBtn = document.getElementById("matchAgain");
+  var matchFirst = null, matchLock = false, matchFound = 0;
+
+  function startMatch(){
+    matchFirst = null; matchLock = false; matchFound = 0;
+    matchMsg.textContent = "";
+    matchAgainBtn.hidden = true;
+    var picks = shuffle(WORDS.slice()).slice(0, 6);
+    var deck = shuffle(picks.concat(picks));
+    matchGrid.innerHTML = "";
+    deck.forEach(function(item){
+      var b = document.createElement("button");
+      b.className = "mcard down";
+      b.textContent = "🌈";
+      b.setAttribute("aria-label", "Mystery card");
+      b.addEventListener("click", function(){ flipCard(b, item); });
+      matchGrid.appendChild(b);
+    });
+    playClips([AUDIO_DIR + "memory-intro.mp3"], "Find the matching pairs! Tap two cards!");
+  }
+
+  function flipCard(btn, item){
+    if (currentMode !== "match" || matchLock || !btn.classList.contains("down")) return;
+    btn.classList.remove("down");
+    btn.textContent = item.pic;
+    btn.setAttribute("aria-label", item.word);
+    if (!matchFirst){
+      matchFirst = { btn: btn, item: item };
+      playClips([clipPath("model", item, "word")], "That's the " + item.word + ".");
+      return;
+    }
+    if (matchFirst.item.word === item.word){
+      btn.classList.add("matched");
+      matchFirst.btn.classList.add("matched");
+      matchFirst = null;
+      matchFound++;
+      playClips([clipPath("praise", item, "word")], "You found the " + item.word + "!");
+      if (matchFound === 6){
+        matchMsg.textContent = "🎉 You found them all!";
+        confetti();
+        setTimeout(confetti, 350);
+        setTimeout(function(){
+          if (currentMode === "match") playClips([AUDIO_DIR + "memory-win.mp3"], "You found them all! Great memory!");
+        }, 700);
+        matchAgainBtn.hidden = false;
+      }
+    } else {
+      playClips([clipPath("model", item, "word")], "That's the " + item.word + ".");
+      matchLock = true;
+      var first = matchFirst;
+      matchFirst = null;
+      setTimeout(function(){
+        btn.classList.add("down"); btn.textContent = "🌈";
+        first.btn.classList.add("down"); first.btn.textContent = "🌈";
+        matchLock = false;
+      }, 1000);
+    }
+  }
+
+  matchAgainBtn.addEventListener("click", function(){ if (currentMode === "match") startMatch(); });
+  document.getElementById("matchBubble").addEventListener("click", function(){
+    if (currentMode === "match") playClips([AUDIO_DIR + "memory-intro.mp3"], "Find the matching pairs! Tap two cards!");
+  });
+
+  /* ---------------- Letter Tracing mode ---------------- */
+  var LETTERS = [
+    { L:"A", word:"apple", pic:"🍎" }, { L:"B", word:"ball", pic:"⚽" },
+    { L:"C", word:"cat", pic:"🐱" }, { L:"D", word:"dog", pic:"🐶" },
+    { L:"E", word:"egg", pic:"🥚" }, { L:"F", word:"frog", pic:"🐸" },
+    { L:"G", word:"grapes", pic:"🍇" }, { L:"H", word:"hat", pic:"🎩" },
+    { L:"I", word:"ice", pic:"🧊" }, { L:"J", word:"juice", pic:"🧃" },
+    { L:"K", word:"kite", pic:"🪁" }, { L:"L", word:"lion", pic:"🦁" },
+    { L:"M", word:"moon", pic:"🌙" }, { L:"N", word:"nose", pic:"👃" },
+    { L:"O", word:"owl", pic:"🦉" }, { L:"P", word:"pig", pic:"🐷" },
+    { L:"Q", word:"queen", pic:"👑" }, { L:"R", word:"Rose", pic:"🌹" },
+    { L:"S", word:"sun", pic:"☀️" }, { L:"T", word:"tree", pic:"🌳" },
+    { L:"U", word:"umbrella", pic:"🌂" }, { L:"V", word:"van", pic:"🚐" },
+    { L:"W", word:"whale", pic:"🐋" }, { L:"X", word:"fox", pic:"🦊" },
+    { L:"Y", word:"yo-yo", pic:"🪀" }, { L:"Z", word:"zebra", pic:"🦓" }
+  ];
+  var traceIdx = 0, tracePts = [], traceHit = [], traceBucket = [], traceBucketTotals = [];
+  var traceDoneFlag = false, traceReady = false;
+  var tCanvas = document.getElementById("traceCanvas");
+  var tCtx = tCanvas.getContext("2d");
+  var traceHead = document.getElementById("traceHead");
+  var traceMsg = document.getElementById("traceMsg");
+
+  function traceFont(){ return "700 380px 'Comic Sans MS','Chalkboard SE',sans-serif"; }
+
+  function computeTracePts(){
+    var off = document.createElement("canvas");
+    off.width = 600; off.height = 600;
+    var c = off.getContext("2d");
+    c.font = traceFont();
+    c.textAlign = "center"; c.textBaseline = "middle";
+    c.fillStyle = "#000";
+    c.fillText(LETTERS[traceIdx].L, 300, 320);
+    var data = c.getImageData(0, 0, 600, 600).data;
+    /* Sample the glyph on a grid, then run a chamfer distance transform:
+       every glyph cell learns its distance to the nearest background cell.
+       Cells near the middle of the stroke become the trace targets — the
+       letter's centerline. The guide draws dots on exactly these points,
+       so what Rose sees is precisely what the checker measures. */
+    var CELL = 7, GW = Math.ceil(600 / CELL), GH = GW;
+    var mask = [], dist = [], idx, x, y;
+    for (y = 0; y < GH; y++){
+      for (x = 0; x < GW; x++){
+        var px = Math.min(599, x * CELL + 3), py = Math.min(599, y * CELL + 3);
+        var onCell = data[(py * 600 + px) * 4 + 3] > 128;
+        mask.push(onCell);
+        dist.push(onCell ? 1e6 : 0);
+      }
+    }
+    for (y = 0; y < GH; y++){
+      for (x = 0; x < GW; x++){
+        idx = y * GW + x;
+        if (!mask[idx]) continue;
+        var m = dist[idx];
+        if (x > 0) m = Math.min(m, dist[idx - 1] + 1);
+        if (y > 0) m = Math.min(m, dist[idx - GW] + 1);
+        if (x > 0 && y > 0) m = Math.min(m, dist[idx - GW - 1] + 1.414);
+        if (x < GW - 1 && y > 0) m = Math.min(m, dist[idx - GW + 1] + 1.414);
+        dist[idx] = m;
+      }
+    }
+    for (y = GH - 1; y >= 0; y--){
+      for (x = GW - 1; x >= 0; x--){
+        idx = y * GW + x;
+        if (!mask[idx]) continue;
+        var m2 = dist[idx];
+        if (x < GW - 1) m2 = Math.min(m2, dist[idx + 1] + 1);
+        if (y < GH - 1) m2 = Math.min(m2, dist[idx + GW] + 1);
+        if (x < GW - 1 && y < GH - 1) m2 = Math.min(m2, dist[idx + GW + 1] + 1.414);
+        if (x > 0 && y < GH - 1) m2 = Math.min(m2, dist[idx + GW - 1] + 1.414);
+        dist[idx] = m2;
+      }
+    }
+    var maxD = 0;
+    for (idx = 0; idx < dist.length; idx++) if (mask[idx] && dist[idx] > maxD) maxD = dist[idx];
+    var thresh = Math.max(1.2, maxD * 0.55);
+    tracePts = [];
+    for (y = 0; y < GH; y++){
+      for (x = 0; x < GW; x++){
+        idx = y * GW + x;
+        if (mask[idx] && dist[idx] >= thresh) tracePts.push({ x: x * CELL + 3, y: y * CELL + 3 });
+      }
+    }
+    if (tracePts.length < 30){
+      tracePts = [];
+      for (y = 0; y < GH; y++){
+        for (x = 0; x < GW; x++){
+          idx = y * GW + x;
+          if (mask[idx]) tracePts.push({ x: x * CELL + 3, y: y * CELL + 3 });
+        }
+      }
+    }
+    traceHit = [];
+    for (var i = 0; i < tracePts.length; i++) traceHit.push(false);
+    /* Bucket the centerline into a 4x4 grid over its bounding box, so
+       every part of the letter must be visited, not just most of it. */
+    traceBucket = [];
+    traceBucketTotals = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+    if (tracePts.length){
+      var minX = 600, maxX = 0, minY = 600, maxY = 0, j, p;
+      for (j = 0; j < tracePts.length; j++){
+        p = tracePts[j];
+        if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+      }
+      var bw = Math.max(1, (maxX - minX) / 4), bh = Math.max(1, (maxY - minY) / 4);
+      for (j = 0; j < tracePts.length; j++){
+        p = tracePts[j];
+        var bx = Math.min(3, Math.floor((p.x - minX) / bw));
+        var by = Math.min(3, Math.floor((p.y - minY) / bh));
+        var b = by * 4 + bx;
+        traceBucket.push(b);
+        traceBucketTotals[b]++;
+      }
+    }
+  }
+
+  function drawGuide(){
+    tCtx.clearRect(0, 0, 600, 600);
+    tCtx.save();
+    tCtx.font = traceFont();
+    tCtx.textAlign = "center"; tCtx.textBaseline = "middle";
+    tCtx.fillStyle = "rgba(23,63,77,0.07)";
+    tCtx.fillText(LETTERS[traceIdx].L, 300, 320);
+    /* Dots sit on the centerline targets themselves. */
+    tCtx.fillStyle = "rgba(110,160,180,0.9)";
+    for (var i = 0; i < tracePts.length; i++){
+      tCtx.beginPath();
+      tCtx.arc(tracePts[i].x, tracePts[i].y, 4.5, 0, Math.PI * 2);
+      tCtx.fill();
+    }
+    tCtx.restore();
+  }
+
+  function showLetter(i, speakIt){
+    traceIdx = ((i % 26) + 26) % 26;
+    traceDoneFlag = false;
+    traceStrokeTotal = 0; traceStrokeOn = 0;
+    computeTracePts();
+    drawGuide();
+    var item = LETTERS[traceIdx];
+    traceHead.textContent = item.L + " — " + item.word + " " + item.pic;
+    traceMsg.textContent = "";
+    if (speakIt) playClips([AUDIO_DIR + "trace-" + item.L + ".mp3"], "Can you trace the letter " + item.L + "?");
+  }
+
+  var traceStrokeTotal = 0, traceStrokeOn = 0;
+
+  function samplePoint(q){
+    traceStrokeTotal++;
+    var on = false, i;
+    for (i = 0; i < tracePts.length; i++){
+      var dx = tracePts[i].x - q.x, dy = tracePts[i].y - q.y;
+      var d2 = dx * dx + dy * dy;
+      if (d2 < 40 * 40) traceHit[i] = true;
+      if (d2 < 34 * 34) on = true;
+    }
+    if (on) traceStrokeOn++;
+    if (!traceDoneFlag && tracePts.length > 0){
+      var hit = 0, bucketHit = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+      for (i = 0; i < tracePts.length; i++){
+        if (traceHit[i]){ hit++; bucketHit[traceBucket[i]]++; }
+      }
+      var coverage = hit / tracePts.length;
+      var accuracy = traceStrokeTotal ? traceStrokeOn / traceStrokeTotal : 1;
+      var regionsOk = true;
+      for (i = 0; i < 16; i++){
+        if (traceBucketTotals[i] >= 8 && bucketHit[i] / traceBucketTotals[i] < 0.4) regionsOk = false;
+      }
+      if (coverage >= 0.78 && accuracy >= 0.68 && regionsOk) traceSuccess();
+    }
+  }
+
+  function traceSuccess(){
+    traceDoneFlag = true;
+    tCtx.save();
+    tCtx.font = traceFont();
+    tCtx.textAlign = "center"; tCtx.textBaseline = "middle";
+    tCtx.fillStyle = "rgba(255,179,0,0.9)";
+    tCtx.fillText(LETTERS[traceIdx].L, 300, 320);
+    tCtx.restore();
+    traceMsg.textContent = "⭐ Great tracing!";
+    playClips([AUDIO_DIR + "trace-praise-" + (1 + Math.floor(Math.random() * 2)) + ".mp3"], "Great tracing!");
+    confetti();
+    var doneIdx = traceIdx;
+    setTimeout(function(){
+      if (currentMode === "trace" && traceDoneFlag && traceIdx === doneIdx) showLetter(traceIdx + 1, true);
+    }, 2600);
+  }
+
+  function tracePos(e){
+    var r = tCanvas.getBoundingClientRect();
+    var bx = tCanvas.clientLeft || 0, by = tCanvas.clientTop || 0;
+    return {
+      x: (e.clientX - r.left - bx) * 600 / (r.width - bx * 2),
+      y: (e.clientY - r.top - by) * 600 / (r.height - by * 2)
+    };
+  }
+
+  function setupTrace(){
+    var drawing = false, last = null;
+    tCanvas.addEventListener("pointerdown", function(e){
+      if (currentMode !== "trace") return;
+      e.preventDefault();
+      drawing = true;
+      last = tracePos(e);
+      tCtx.save();
+      tCtx.fillStyle = "#ec407a";
+      tCtx.beginPath(); tCtx.arc(last.x, last.y, 15, 0, Math.PI * 2); tCtx.fill();
+      tCtx.restore();
+      samplePoint(last);
+    });
+    tCanvas.addEventListener("pointermove", function(e){
+      if (!drawing || currentMode !== "trace") return;
+      e.preventDefault();
+      var p = tracePos(e);
+      tCtx.save();
+      tCtx.strokeStyle = "#ec407a";
+      tCtx.lineWidth = 30; tCtx.lineCap = "round"; tCtx.lineJoin = "round";
+      tCtx.beginPath(); tCtx.moveTo(last.x, last.y); tCtx.lineTo(p.x, p.y); tCtx.stroke();
+      tCtx.restore();
+      var dist = Math.sqrt((p.x - last.x) * (p.x - last.x) + (p.y - last.y) * (p.y - last.y));
+      var steps = Math.max(1, Math.floor(dist / 9));
+      for (var s = 1; s <= steps; s++){
+        samplePoint({ x: last.x + (p.x - last.x) * s / steps, y: last.y + (p.y - last.y) * s / steps });
+      }
+      last = p;
+    });
+    tCanvas.addEventListener("pointerup", function(){ drawing = false; });
+    tCanvas.addEventListener("pointerleave", function(){ drawing = false; });
+    document.getElementById("traceClear").addEventListener("click", function(){
+      traceDoneFlag = false;
+      traceStrokeTotal = 0; traceStrokeOn = 0;
+      computeTracePts();
+      drawGuide();
+      traceMsg.textContent = "";
+    });
+    document.getElementById("traceNext").addEventListener("click", function(){ showLetter(traceIdx + 1, true); });
+    traceReady = true;
+  }
+
+  function startTrace(){
+    if (!traceReady) setupTrace();
+    showLetter(traceIdx, true);
+    playClips([AUDIO_DIR + "trace-intro.mp3"], "Let's trace letters! Follow the letter with your finger!");
+    setTimeout(function(){
+      if (currentMode === "trace" && !traceDoneFlag)
+        playClips([AUDIO_DIR + "trace-" + LETTERS[traceIdx].L + ".mp3"], "Can you trace the letter " + LETTERS[traceIdx].L + "?");
+    }, 2300);
+  }
+
+  /* ---------------- Coloring mode ---------------- */
+  var colorChoice = "#1e88e5", colorReady = false;
+
+  function startColor(){
+    if (!colorReady){
+      var palette = document.getElementById("palette");
+      COLORS.forEach(function(c){
+        var b = document.createElement("button");
+        b.className = "swatch" + (c.hex === colorChoice ? " on" : "");
+        b.style.background = c.hex;
+        b.setAttribute("aria-label", c.word);
+        b.addEventListener("click", function(){
+          colorChoice = c.hex;
+          var all = palette.querySelectorAll(".swatch");
+          for (var i = 0; i < all.length; i++) all[i].classList.remove("on");
+          b.classList.add("on");
+        });
+        palette.appendChild(b);
+      });
+      var regions = document.querySelectorAll("#colorSvg .region");
+      for (var i = 0; i < regions.length; i++){
+        (function(reg){
+          reg.addEventListener("click", function(){ reg.setAttribute("fill", colorChoice); });
+        })(regions[i]);
+      }
+      document.getElementById("colorReset").addEventListener("click", function(){
+        var rs = document.querySelectorAll("#colorSvg .region");
+        for (var j = 0; j < rs.length; j++) rs[j].setAttribute("fill", "#ffffff");
+      });
+      colorReady = true;
+    }
+    playClips([AUDIO_DIR + "color-intro.mp3"], "Tap a color, then tap part of the picture to color it!");
+  }
+
+  document.getElementById("colorBubble").addEventListener("click", function(){
+    if (currentMode === "color") playClips([AUDIO_DIR + "color-intro.mp3"], "Tap a color, then tap part of the picture to color it!");
+  });
+})();
+</script>
+</body>
+</html>
